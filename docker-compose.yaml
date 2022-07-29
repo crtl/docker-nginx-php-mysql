@@ -6,8 +6,8 @@ volumes:
 networks:
   docker-php:
 
-services:
 
+services:
   database:
     image: mariadb:10-bionic
     restart: unless-stopped
