@@ -1,6 +1,6 @@
 {
     "name": "crtl/docker-nginx-mysql-php",
-    "description": "Simple docker-compose configration with NGINX server PHP-FPM and MySQL including PHPMyAdmin for PHP development.",
+    "description": "Simple docker-compose configuration with NGINX server PHP-FPM and MySQL including PHPMyAdmin for PHP development.",
     "type": "project",
     "authors": [
         {
