@@ -1,16 +1,14 @@
-ARG PHP_VERSION=8.1
-
-FROM php:${PHP_VERSION}-fpm
+FROM php:${PHP_VERSION:-8.1}-fpm
 
 ARG UID=1000
 ARG UNAME=marvin
 ARG WORKDIR=/var/www
 
-RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
+RUN usermod -u $UID www-data
+RUN groupmod -g $UID www-data
 
-# Copy local php configuration into image
-COPY .docker/php/php-custom.ini $PHP_INI_DIR/conf.d/php.ini
-COPY .docker/php/xdebug.ini $PHP_INI_DIR/conf.d/xdebug.ini
+# Use php.ini-development as default init
+RUN mv "$PHP_INI_DIR/php.ini-development" "$PHP_INI_DIR/php.ini"
 
 # Install system packages
 RUN apt-get update && apt-get install -y apt-transport-https && \
@@ -44,20 +42,13 @@ RUN docker-php-ext-install \
 # Configure GD
 RUN docker-php-ext-configure gd --with-jpeg
 
-RUN docker-php-ext-enable opcache gd zip pdo_mysql intl iconv bcmath
-
-# Create user $UNAME with $UID to match host users id to prevent permission issues for created files
-RUN useradd -G www-data,root -u $UID -d /home/$UNAME $UNAME
-RUN mkdir -p /home/$UNAME/.composer && chown -R $UNAME:$UNAME /home/$UNAME
-
+# Enable extensions
+RUN docker-php-ext-enable xdebug opcache gd zip pdo_mysql intl iconv bcmath
 
 # Install composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-
-
 COPY composer.json composer.lock ./
-
 
 RUN set -eux; \
     composer install --ignore-platform-reqs --prefer-dist --no-autoloader --no-scripts  --no-progress; \
@@ -66,9 +57,7 @@ RUN set -eux; \
 RUN set -eux; \
     composer dump-autoload --classmap-authoritative
 
-# Switch workin directory
+# Switch working directory
 WORKDIR ${WORKDIR}
-
-USER $UNAME
 
 #RUN usermod -u 1000 www-data

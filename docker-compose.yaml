@@ -3,72 +3,60 @@ version: "3.8"
 volumes:
   db-data:
 
-networks:
-  docker-php:
-
-
 services:
   database:
-    image: mariadb:10-bionic
-    restart: unless-stopped
+    image: mariadb:${MARIADB_VERSION:-10}-bionic
+    restart: on-failure
     environment:
       MYSQL_ROOT_PASSWORD: root
       MYSQL_ROOT_USER: root
     volumes:
-      - ./.docker/mysql:/docker-entrypoint-initdb.d
+      - ./.docker/mysql/initdb.d:/docker-entrypoint-initdb.d
       - db-data:/var/lib/mysql:rw
-    networks:
-      - docker-php
     ports:
       - "3306:3306"
 
   app:
-    image: docker-php/app
     build:
       context: .
-      dockerfile: .docker/Dockerfile
-    container_name: docker-p
-    restart: unless-stopped
+      dockerfile: .docker/php/Dockerfile
+    restart: on-failure
     working_dir: /var/www/
     environment:
       APP_ENV: dev
       APP_DEBUG: 1
       XDEBUG_CONFIG: remote_host=localhost
       PHP_IDE_CONFIG: serverName=localhost
-      TZ: Europe/Berlin
+      TZ: ${PHP_TIMEZONE:-Europe/Berlin}
     ports:
       - "9000:9000"
     volumes:
       - ./:/var/www
+      - ./.docker/php/php-custom.ini:/usr/local/etc/php/conf.d/php-custom.ini
+      - ./.docker/php/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini
     depends_on:
       - database
-    networks:
-      - docker-php
 
   server:
     image: nginx:alpine
-    restart: unless-stopped
+    restart: on-failure
     ports:
-      - "8000:80"
+      - "${SERVER_PORT:-80}:80"
     volumes:
       - ./public:/var/www/public:ro
       - ./.docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       - app
-    networks:
-      - docker-php
 
   phpmyadmin:
     image: phpmyadmin
     restart: on-failure
     ports:
-      - 8080:80
+      - "${PHPMYADMIN_PORT:-8080}:80"
     environment:
-      - PMA_HOST=database
-      - PMA_USER=root
-      - PMA_PASSWORD=root
-      - MYSQL_ROOT_PASSWORD=root
+      PMA_HOST: database
+      PMA_USER: root
+      PMA_PASSWORD: root
+      MYSQL_ROOT_PASSWORD: root
     depends_on:
       - database
-    networks:
-      - docker-php
